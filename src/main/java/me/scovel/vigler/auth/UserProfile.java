@@ -39,6 +39,12 @@ public class UserProfile {
 		this.legacy = json.optBoolean("legacy", false);
 	}
 
+	public UserProfile(String playerName2, String uuid2, boolean legacy2) {
+		this.playername = playerName2;
+		this.uuid = uuid2;
+		this.legacy = legacy2;
+	}
+
 	public JSONObject json() {
 		return (new JSONObject()).put("id", this.uuid).put("name", this.playername).put("legacy", this.legacy);
 	}

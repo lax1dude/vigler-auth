@@ -140,9 +140,11 @@ public class Authenticator {
 			this.userProperties.clear();
 			json.getJSONObject("userProperties").toMap().forEach((dee, vile) -> this.userProperties.put(dee, (String) vile));
 		}
+		this.clearEmptyVariables();
 	}
 	
 	public JSONObject saveToJSON() {
+		this.clearEmptyVariables();
 		return (new JSONObject())
 				.put("username", this.username)
 				.put("clientToken", this.clientToken)
@@ -225,6 +227,40 @@ public class Authenticator {
 		}
 	}
 	
+	public boolean ensureLoggedIn() {
+		this.clearEmptyVariables();
+		if(this.accessToken != null && this.selectedProfile != null) {
+			if(!this.isTokenValid()) {
+				try {
+					this.forceTokenRefresh();
+					return true;
+				}catch(AuthenticationException e) {
+					try {
+						if(this.username != null && this.password != null) {
+							this.loginWithPassword();
+							return true;
+						}
+					}catch(AuthenticationException e2) {}
+				}
+			}else {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	private static boolean isEmpty(String string) {
+		return string == null || string.trim().length() == 0;
+	}
+	
+	private void clearEmptyVariables() {
+		if(isEmpty(this.clientToken)) this.clientToken = null;
+		if(isEmpty(this.accessToken)) this.accessToken = null;
+		if(isEmpty(this.userID)) this.userID = null;
+		if(isEmpty(this.username)) this.username = null;
+		if(isEmpty(this.password)) this.password = null;
+	}
+	
 	/**
 	 * Required Set Variables: accessToken
 	 */
@@ -262,7 +298,8 @@ public class Authenticator {
 					.body(new JSONObject()
 							.put("username", this.username)
 							.put("password", this.password)).asJson();
-			
+			this.selectedProfile = null;
+			this.accessToken = null;
 			Requestler.handleResponseCode(response);
 		} catch (Throwable t) {
 			throw new AuthenticationException("Could not preform request!", t);
@@ -279,7 +316,8 @@ public class Authenticator {
 					.body(new JSONObject()
 							.put("accessToken", this.accessToken)
 							.put("clientToken", this.clientToken)).asJson();
-			
+			this.selectedProfile = null;
+			this.accessToken = null;
 			Requestler.handleResponseCode(response);
 		} catch (Throwable t) {
 			throw new AuthenticationException("Could not preform request!", t);
@@ -288,5 +326,12 @@ public class Authenticator {
 	
 	public UserProfile getSelectedProfile() {
 		return this.selectedProfile;
+	}
+	
+	/**
+	 * For minecraft
+	 */
+	public String getUserPropertiesString() {
+		return "{}";
 	}
 }
