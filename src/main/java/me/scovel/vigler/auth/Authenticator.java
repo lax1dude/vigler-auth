@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import com.mashape.unirest.http.HttpResponse;
@@ -332,6 +333,10 @@ public class Authenticator {
 	 * For minecraft
 	 */
 	public String getUserPropertiesString() {
-		return "{}";
+		JSONObject obj = new JSONObject();
+		if(this.userProperties != null && this.userProperties.size() > 0) {
+			this.userProperties.forEach((dee, vile) -> obj.put(dee, (new JSONArray()).put(vile)));
+		}
+		return obj.toString();
 	}
 }
