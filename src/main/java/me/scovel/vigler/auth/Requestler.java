@@ -60,8 +60,6 @@ public class Requestler {
 				if(cause != null) {
 					if("UserMigratedException".equals(cause)) {
 						t.initCause(new UserMigratedException());
-					}else {
-						t = new IOException(cause);
 					}
 				}
 				

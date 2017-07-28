@@ -27,6 +27,7 @@ package me.scovel.vigler.auth;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.json.JSONObject;
 
@@ -42,12 +43,18 @@ public class Authenticator {
 	private Map<String,String> userProperties;
 	private Game game;
 	
+	private Consumer<String> loghandler = (dee) -> {};
+	
 	public String getClientToken() {
 		return clientToken;
 	}
 
 	public String getAccessToken() {
 		return accessToken;
+	}
+	
+	public void seLogHandler(Consumer<String> handler) {
+		this.loghandler = handler;
 	}
 	
 	/**
@@ -159,8 +166,12 @@ public class Authenticator {
 		this.loginWithPassword();
 	}
 
+	/**
+	 * Required Set Variables: username, password
+	 */
 	public void loginWithPassword() throws AuthenticationException {
 		try {
+			loghandler.accept("Logging in with username and password...");
 			HttpResponse<JsonNode> response = Requestler.startRequest("authenticate")
 					.body(new JSONObject()
 							.put("agent", this.game.agent)
@@ -170,28 +181,69 @@ public class Authenticator {
 							.put("requestUser", true)).asJson();
 			Requestler.handleResponseCode(response);
 			
-			JSONObject jsonObject = response.getBody().getObject();
+			handleLoginResponse(response.getBody().getObject());
 			
-			this.accessToken = jsonObject.getString("accessToken");
-			this.clientToken = jsonObject.getString("clientToken");
-			this.selectedProfile = new UserProfile(jsonObject.getJSONObject("selectedProfile"));
-			JSONObject userJson = jsonObject.getJSONObject("user");
-			this.userID = userJson.getString("id");
-			if(userJson.has("properties")) {
-				this.userProperties.clear();
-				userJson.getJSONArray("properties").forEach((yeeeee) -> {JSONObject j = (JSONObject)yeeeee; this.userProperties.put(j.getString("name"), j.getString("value"));});
-			}
 		} catch (Throwable t) {
 			throw new AuthenticationException("Could not preform request!", t);
 		}
 	}
 	
+	/**
+	 * Required Set Variables: accessToken
+	 */
 	public void loginWithToken() throws AuthenticationException {
-		
+		if(!isTokenValid()) {
+			this.forceTokenRefresh();
+		}
 	}
 	
-	public void isTokenValid() {
-		
+	public void forceTokenRefresh() throws AuthenticationException {
+		try {
+			loghandler.accept("Refreshing access token...");
+			HttpResponse<JsonNode> response = Requestler.startRequest("refresh")
+					.body(new JSONObject()
+							.put("accessToken", this.accessToken)
+							.put("clientToken", this.clientToken)
+							.put("requestUser", true)).asJson();
+			Requestler.handleResponseCode(response);
+			
+			handleLoginResponse(response.getBody().getObject());
+		} catch (Throwable t) {
+			throw new AuthenticationException("Could not preform request!", t);
+		}
+	}
+	
+	private void handleLoginResponse(JSONObject jsonObject) {
+		this.accessToken = jsonObject.getString("accessToken");
+		this.clientToken = jsonObject.getString("clientToken");
+		this.selectedProfile = new UserProfile(jsonObject.getJSONObject("selectedProfile"));
+		JSONObject userJson = jsonObject.getJSONObject("user");
+		this.userID = userJson.getString("id");
+		if(userJson.has("properties")) {
+			this.userProperties.clear();
+			userJson.getJSONArray("properties").forEach((yeeeee) -> {JSONObject j = (JSONObject)yeeeee; this.userProperties.put(j.getString("name"), j.getString("value"));});
+		}
+	}
+	
+	/**
+	 * Required Set Variables: accessToken
+	 */
+	public boolean isTokenValid() {
+		try {
+			HttpResponse<JsonNode> response = Requestler.startRequest("validate")
+					.body(new JSONObject()
+							.put("accessToken", this.accessToken)
+							.put("clientToken", this.clientToken)).asJson();
+			
+			Requestler.handleResponseCode(response);
+			
+			loghandler.accept("Current access token is valid");
+			
+			return true;
+		} catch (Throwable t) {
+			loghandler.accept("Access token has expired (got exception: "+t.toString()+")");
+			return false;
+		}
 	}
 	
 	public void setUsernamePasswordAndLogout(String username, String password) throws AuthenticationException {
@@ -200,12 +252,38 @@ public class Authenticator {
 		this.logout();
 	}
 	
+	/**
+	 * Required Set Variables: username, password
+	 */
 	public void logout() throws AuthenticationException {
-		
+		try {
+			loghandler.accept("Logging user out...");
+			HttpResponse<JsonNode> response = Requestler.startRequest("signout")
+					.body(new JSONObject()
+							.put("username", this.username)
+							.put("password", this.password)).asJson();
+			
+			Requestler.handleResponseCode(response);
+		} catch (Throwable t) {
+			throw new AuthenticationException("Could not preform request!", t);
+		}
 	}
 	
-	public void invalidateToken() {
-		
+	/**
+	 * Required Set Variables: accessToken
+	 */
+	public void invalidateToken() throws AuthenticationException {
+		try {
+			loghandler.accept("Invalidating current access token...");
+			HttpResponse<JsonNode> response = Requestler.startRequest("invalidate")
+					.body(new JSONObject()
+							.put("accessToken", this.accessToken)
+							.put("clientToken", this.clientToken)).asJson();
+			
+			Requestler.handleResponseCode(response);
+		} catch (Throwable t) {
+			throw new AuthenticationException("Could not preform request!", t);
+		}
 	}
 	
 	public UserProfile getSelectedProfile() {
