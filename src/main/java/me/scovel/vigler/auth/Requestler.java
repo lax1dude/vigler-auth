@@ -25,11 +25,65 @@
 
 package me.scovel.vigler.auth;
 
+import java.io.IOException;
+
+import org.json.JSONObject;
+
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.request.HttpRequestWithBody;
 
-public class Unirestler {
+public class Requestler {
+
 	public static HttpRequestWithBody startRequest(String endpoint) {
 		return Unirest.post("https://authserver.mojang.com/"+endpoint).header("Content-Type", "application/json");
+	}
+
+	public static void handleResponseCode(HttpResponse<JsonNode> response) throws Throwable {
+		if(response.getStatus() < 200 || response.getStatus() >= 300) {
+			JSONObject json = response.getBody().getObject();
+			if(json.has("error")) {
+				String error   = json.getString("error");
+				String message = json.optString("errorMessage");
+				String cause   = json.optString("cause");
+				
+				Throwable t;
+				if("ForbiddenOperationException".equals(error)) {
+					t = new ForbiddenOperationException(message);
+				}else if("IllegalArgumentException".equals(error)) {
+					t = new IllegalArgumentException(message);
+				}else {
+					t = new IOException(message);
+				}
+				
+				if(cause != null) {
+					if("UserMigratedException".equals(cause)) {
+						t.initCause(new UserMigratedException());
+					}else {
+						t = new IOException(cause);
+					}
+				}
+				
+				throw t;
+			}
+		}
+	}
+	
+	static class UserMigratedException extends Exception {
+		private static final long serialVersionUID = 1L;
+		
+		public UserMigratedException() {
+			super("User Migrated");
+		}
+	}
+	
+
+	static class ForbiddenOperationException extends Exception {
+		private static final long serialVersionUID = 1L;
+		
+		public ForbiddenOperationException(String cause) {
+			super(cause);
+		}
 	}
 }

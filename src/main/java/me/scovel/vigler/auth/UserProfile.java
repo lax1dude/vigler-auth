@@ -28,9 +28,19 @@ package me.scovel.vigler.auth;
 import org.json.JSONObject;
 
 public class UserProfile {
-
+	
+	public final String uuid;
+	public final String playername;
+	public final boolean legacy;
+	
 	public UserProfile(JSONObject json) {
-		
+		this.uuid = json.getString("id");
+		this.playername = json.getString("name");
+		this.legacy = json.optBoolean("legacy", false);
+	}
+
+	public JSONObject json() {
+		return (new JSONObject()).put("id", this.uuid).put("name", this.playername).put("legacy", this.legacy);
 	}
 
 }

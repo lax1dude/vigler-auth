@@ -25,30 +25,83 @@
 
 package me.scovel.vigler.auth;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.json.JSONObject;
+
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.JsonNode;
 
 public class Authenticator {
 	
 	private String clientToken;
 	private String accessToken;
 	private String userID;
-	private List<UserProfile> availableProfiles;
 	private UserProfile selectedProfile;
 	private Map<String,String> userProperties;
 	private Game game;
 	
+	public String getClientToken() {
+		return clientToken;
+	}
+
+	public String getAccessToken() {
+		return accessToken;
+	}
+	
+	/**
+	 * this is not what you pass to minecraft, the uuid to pass to minecraft is in .
+	 */
+	public String getUserID() {
+		return userID;
+	}
+
+	public Map<String, String> getUserProperties() {
+		return userProperties;
+	}
+
+	public Game getGame() {
+		return game;
+	}
+
+	public String getUsername() {
+		return username;
+	}
+
+	void setClientToken(String clientToken) {
+		this.clientToken = clientToken;
+	}
+
+	public void setAccessToken(String accessToken) {
+		this.accessToken = accessToken;
+	}
+
+	void setUserID(String userID) {
+		this.userID = userID;
+	}
+
+	void setSelectedProfile(UserProfile selectedProfile) {
+		this.selectedProfile = selectedProfile;
+	}
+
+	void setUserProperties(Map<String, String> userProperties) {
+		this.userProperties = userProperties;
+	}
+
+	void setGame(Game game) {
+		this.game = game;
+	}
+
 	public Authenticator(String clientToken, Game game) {
 		this.clientToken = clientToken;
 		this.game = game;
+		this.userProperties = new HashMap();
 	}
 	
 	public Authenticator(JSONObject json, Game game) {
 		this.game = game;
+		this.userProperties = new HashMap();
 		this.load(json);
 	}
 	
@@ -57,6 +110,7 @@ public class Authenticator {
 	 */
 	public Authenticator(String clientToken) {
 		this.clientToken = clientToken;
+		this.userProperties = new HashMap();
 		this.game = Game.MINECRAFTv1;
 	}
 	
@@ -65,19 +119,30 @@ public class Authenticator {
 	 */
 	public Authenticator(JSONObject json) {
 		this.game = Game.MINECRAFTv1;
+		this.userProperties = new HashMap();
 		this.load(json);
 	}
 	
 	private void load(JSONObject json) {
-		this.username          = json.getString("username");
-		this.clientToken       = json.getString("clientToken");
-		this.accessToken       = json.getString("accessToken");
-		this.selectedProfile   = new UserProfile(json.getJSONObject("selectedProfile"));
-		this.userID            = json.getString("userId");
-		this.availableProfiles = new ArrayList();
-		this.userProperties    = new HashMap();
-		json.getJSONArray("availableProfiles").forEach((ooooo) -> this.availableProfiles.add(new UserProfile((JSONObject)ooooo)));
-		json.getJSONObject("userProperties").toMap().forEach((dee, vile) -> this.userProperties.put(dee, (String) vile));
+		this.username          = json.optString("username");
+		this.clientToken       = json.optString("clientToken");
+		this.accessToken       = json.optString("accessToken");
+		this.selectedProfile   = json.has("selectedProfile") ? new UserProfile(json.getJSONObject("selectedProfile")) : null;
+		this.userID            = json.optString("userId");
+		if(json.has("selectedProfile")) {
+			this.userProperties.clear();
+			json.getJSONObject("userProperties").toMap().forEach((dee, vile) -> this.userProperties.put(dee, (String) vile));
+		}
+	}
+	
+	public JSONObject saveToJSON() {
+		return (new JSONObject())
+				.put("username", this.username)
+				.put("clientToken", this.clientToken)
+				.put("accessToken", this.accessToken)
+				.put("selectedProfile", this.selectedProfile == null ? null : this.selectedProfile.json())
+				.put("userId", this.userID)
+				.put("userProperties", this.userProperties);
 	}
 
 	private String username = null;
@@ -95,7 +160,30 @@ public class Authenticator {
 	}
 
 	public void loginWithPassword() throws AuthenticationException {
-		
+		try {
+			HttpResponse<JsonNode> response = Requestler.startRequest("authenticate")
+					.body(new JSONObject()
+							.put("agent", this.game.agent)
+							.put("username", this.username)
+							.put("password", this.password)
+							.put("clientToken", this.clientToken)
+							.put("requestUser", true)).asJson();
+			Requestler.handleResponseCode(response);
+			
+			JSONObject jsonObject = response.getBody().getObject();
+			
+			this.accessToken = jsonObject.getString("accessToken");
+			this.clientToken = jsonObject.getString("clientToken");
+			this.selectedProfile = new UserProfile(jsonObject.getJSONObject("selectedProfile"));
+			JSONObject userJson = jsonObject.getJSONObject("user");
+			this.userID = userJson.getString("id");
+			if(userJson.has("properties")) {
+				this.userProperties.clear();
+				userJson.getJSONArray("properties").forEach((yeeeee) -> {JSONObject j = (JSONObject)yeeeee; this.userProperties.put(j.getString("name"), j.getString("value"));});
+			}
+		} catch (Throwable t) {
+			throw new AuthenticationException("Could not preform request!", t);
+		}
 	}
 	
 	public void loginWithToken() throws AuthenticationException {
@@ -118,5 +206,9 @@ public class Authenticator {
 	
 	public void invalidateToken() {
 		
+	}
+	
+	public UserProfile getSelectedProfile() {
+		return this.selectedProfile;
 	}
 }

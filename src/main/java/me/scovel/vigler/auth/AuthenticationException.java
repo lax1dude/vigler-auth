@@ -29,6 +29,14 @@ import java.io.IOException;
 
 public class AuthenticationException extends IOException {
 	
+	public AuthenticationException(String string, Throwable t) {
+		super(string, t);
+	}
+	
+	public AuthenticationException(String string) {
+		super(string);
+	}
+
 	private static final long serialVersionUID = 1L;
 
 	
