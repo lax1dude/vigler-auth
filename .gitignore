@@ -4,6 +4,6 @@
 !gradlew*
 !/gradle/
 !build.gradle
-!/gradle.properties
+!settings.gradle
 !LICENSE*
 !README*
