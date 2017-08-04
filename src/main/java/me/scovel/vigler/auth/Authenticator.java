@@ -27,6 +27,7 @@ package me.scovel.vigler.auth;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 import org.json.JSONArray;
@@ -302,6 +303,7 @@ public class Authenticator {
 			this.selectedProfile = null;
 			this.accessToken = null;
 			Requestler.handleResponseCode(response);
+			setClientToken(UUID.randomUUID().toString()); //no headache for people using accounts from theit launcher
 		} catch (Throwable t) {
 			throw new AuthenticationException("Could not preform request!", t);
 		}
