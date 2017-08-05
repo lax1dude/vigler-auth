@@ -25,8 +25,6 @@
 
 package me.scovel.vigler.auth;
 
-import java.io.IOException;
-
 import org.json.JSONObject;
 
 import com.mashape.unirest.http.HttpResponse;
@@ -54,7 +52,7 @@ public class Requestler {
 				}else if("IllegalArgumentException".equals(error)) {
 					t = new IllegalArgumentException(message);
 				}else {
-					t = new IOException(message);
+					t = new EaglerException(message);
 				}
 				
 				if(cause != null) {
@@ -81,6 +79,14 @@ public class Requestler {
 		private static final long serialVersionUID = 1L;
 		
 		public ForbiddenOperationException(String cause) {
+			super(cause);
+		}
+	}
+	
+	static class EaglerException extends Exception {
+		private static final long serialVersionUID = 1L;
+		
+		public EaglerException(String cause) {
 			super(cause);
 		}
 	}

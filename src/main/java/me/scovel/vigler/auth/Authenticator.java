@@ -25,6 +25,7 @@
 
 package me.scovel.vigler.auth;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -35,6 +36,7 @@ import org.json.JSONObject;
 
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
+import com.mashape.unirest.http.exceptions.UnirestException;
 
 public class Authenticator {
 	
@@ -238,14 +240,31 @@ public class Authenticator {
 					return true;
 				}catch(AuthenticationException e) {
 					try {
-						if(this.username != null && this.password != null) {
-							this.loginWithPassword();
-							return true;
+						if((e.getCause() instanceof IOException) || (e.getCause() instanceof UnirestException)) { //no internet
+							if(this.selectedProfile != null) {
+								return true;
+							}
+						}else {
+							if(this.username != null && this.password != null) {
+								this.loginWithPassword();
+								return true;
+							}
 						}
-					}catch(AuthenticationException e2) {}
+					}catch(AuthenticationException e2) {
+						loghandler.accept("Could not log in with username and password: "+e2.toString()+"  "+((e2.getCause() != null) ? e2.getCause().toString() : null));
+					}
 				}
 			}else {
 				return true;
+			}
+		}else {
+			try {
+				if(this.username != null && this.password != null) {
+					this.loginWithPassword();
+					return true;
+				}
+			}catch(AuthenticationException e2) {
+				loghandler.accept("Could not log in with username and password: "+e2.toString()+"  "+((e2.getCause() != null) ? e2.getCause().toString() : null));
 			}
 		}
 		return false;
@@ -303,7 +322,7 @@ public class Authenticator {
 			this.selectedProfile = null;
 			this.accessToken = null;
 			Requestler.handleResponseCode(response);
-			setClientToken(UUID.randomUUID().toString()); //no headache for people using accounts from theit launcher
+			setClientToken(UUID.randomUUID().toString()); //no headache for people using accounts from their launcher
 		} catch (Throwable t) {
 			throw new AuthenticationException("Could not preform request!", t);
 		}
@@ -322,6 +341,7 @@ public class Authenticator {
 			this.selectedProfile = null;
 			this.accessToken = null;
 			Requestler.handleResponseCode(response);
+			setClientToken(UUID.randomUUID().toString()); //no headache for people using accounts from their launcher
 		} catch (Throwable t) {
 			throw new AuthenticationException("Could not preform request!", t);
 		}
