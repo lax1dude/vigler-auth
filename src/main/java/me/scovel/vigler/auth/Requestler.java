@@ -25,6 +25,8 @@
 
 package me.scovel.vigler.auth;
 
+import java.io.IOException;
+
 import org.json.JSONObject;
 
 import com.mashape.unirest.http.HttpResponse;
@@ -51,6 +53,8 @@ public class Requestler {
 					t = new ForbiddenOperationException(message);
 				}else if("IllegalArgumentException".equals(error)) {
 					t = new IllegalArgumentException(message);
+				}else if("TooManyRequestsException".equals(error)) {
+					t = new TooManyRequestsException(message);
 				}else {
 					t = new EaglerException(message);
 				}
@@ -63,6 +67,13 @@ public class Requestler {
 				
 				throw t;
 			}
+		}
+	}
+
+	static class TooManyRequestsException extends IOException {
+		private static final long serialVersionUID = 1L;
+		public TooManyRequestsException(String msg) {
+			super(msg);
 		}
 	}
 	

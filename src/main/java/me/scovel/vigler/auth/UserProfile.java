@@ -25,7 +25,15 @@
 
 package me.scovel.vigler.auth;
 
+import java.nio.charset.Charset;
+
+import org.apache.commons.codec.binary.Base64;
+import org.json.JSONArray;
 import org.json.JSONObject;
+
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.JsonNode;
+import com.mashape.unirest.http.Unirest;
 
 public class UserProfile {
 	
@@ -47,6 +55,25 @@ public class UserProfile {
 
 	public JSONObject json() {
 		return (new JSONObject()).put("id", this.uuid).put("name", this.playername).put("legacy", this.legacy);
+	}
+	
+	public String getSkinURL() {
+		try {
+			HttpResponse<JsonNode> response = Unirest.get("https://sessionserver.mojang.com/session/minecraft/profile/"+this.uuid).asJson();
+			Requestler.handleResponseCode(response);
+			JSONArray j = response.getBody().getObject().getJSONArray("properties");
+			for(Object o : j) {
+				JSONObject o2 = (JSONObject) o;
+				if(o2.getString("name").equals("textures")) {
+					JSONObject t = new JSONObject(new String(Base64.decodeBase64(o2.getString("value")), Charset.forName("UTF8")));
+					return t.getJSONObject("textures").getJSONObject("SKIN").getString("url");
+				}
+			}
+			throw new IllegalArgumentException("sessionserver.mojang.com did not return a skin");
+		} catch (Throwable e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 }
